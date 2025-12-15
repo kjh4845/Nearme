@@ -14,11 +14,25 @@ type OverpassElement = {
 
 type PlaceDocument = Omit<Place, 'id'> & { source_id: string };
 
-const OVERPASS_URL = process.env.OVERPASS_URL || 'https://overpass-api.de/api/interpreter';
+const DEFAULT_ENDPOINTS = [
+  process.env.OVERPASS_URL,
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.ru/api/interpreter',
+  'http://overpass-api.de/api/interpreter', // 일부 환경에서 https 차단 대비
+].filter(Boolean) as string[];
+
+const OVERPASS_URLS = (process.env.OVERPASS_URLS || '')
+  .split(',')
+  .map((v) => v.trim())
+  .filter(Boolean);
+
+const OVERPASS_ENDPOINTS = Array.from(new Set([...OVERPASS_URLS, ...DEFAULT_ENDPOINTS]));
 const AMENITY_FILTERS = ['cafe', 'restaurant', 'fast_food', 'convenience', 'hairdresser', 'beauty'];
 const SHOP_FILTERS = ['convenience', 'supermarket', 'bakery', 'department_store', 'hairdresser', 'beauty'];
-const RETRIES_PER_BBOX = 4;
-const BASE_DELAY_MS = parseInt(process.env.OVERPASS_DELAY_MS || '8000', 10); // slow default to avoid rate limit
+const RETRIES_PER_BBOX = parseInt(process.env.OVERPASS_RETRIES || '6', 10);
+const BASE_DELAY_MS = parseInt(process.env.OVERPASS_DELAY_MS || '12000', 10); // 더 느리게 기본값 상향
+const QUERY_TIMEOUT_SEC = parseInt(process.env.OVERPASS_TIMEOUT_SEC || '90', 10);
 // South Korea nationwide grid (roughly 6 lat bands x 7 lon bands)
 const LAT_BANDS: Array<{ south: number; north: number }> = [
   { south: 33.0, north: 34.0 },
@@ -54,7 +68,7 @@ function buildOverpassQuery(bbox: BBox) {
   const { south, west, north, east } = bbox;
   const regexAmenity = AMENITY_FILTERS.join('|');
   const regexShop = SHOP_FILTERS.join('|');
-  return `[out:json][timeout:30];(
+  return `[out:json][timeout:${QUERY_TIMEOUT_SEC}];(
     node["amenity"~"${regexAmenity}"](${south},${west},${north},${east});
     way["amenity"~"${regexAmenity}"](${south},${west},${north},${east});
     relation["amenity"~"${regexAmenity}"](${south},${west},${north},${east});
@@ -68,14 +82,35 @@ async function fetchOverpass(bbox: BBox): Promise<OverpassElement[]> {
   const query = buildOverpassQuery(bbox);
   let attempt = 0;
 
+  if (!OVERPASS_ENDPOINTS.length) {
+    throw new Error('No Overpass endpoints configured');
+  }
+
   // basic retry with backoff to handle 429
   while (attempt < RETRIES_PER_BBOX) {
     attempt += 1;
-    const res = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: query,
-    });
+    const endpoint = OVERPASS_ENDPOINTS[(attempt - 1) % OVERPASS_ENDPOINTS.length];
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), QUERY_TIMEOUT_SEC * 1000 + 5000); // 쿼리 타임아웃 + 버퍼
+
+    let res: Response;
+    try {
+      res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: query,
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      const isLast = attempt >= RETRIES_PER_BBOX;
+      console.warn(`Overpass fetch failed (${endpoint}) attempt ${attempt}/${RETRIES_PER_BBOX}: ${String(err)}`);
+      if (isLast) throw err;
+      await sleep(BASE_DELAY_MS * attempt);
+      continue;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const text = await res.text();
 
