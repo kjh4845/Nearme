@@ -49,9 +49,20 @@ EOF
 ```bash
 docker compose up -d --build
 ```
-- 프론트엔드: `http://<서버_IP>` (포트 80으로 노출)
+- 프론트엔드: `http://<서버_IP>` (포트 80으로 노출, proxy가 80/443 담당)
 - 백엔드 API: `http://<서버_IP>:4000/api`
 - Elasticsearch: `http://<서버_IP>:9200`
+
+## 6) HTTPS(셀프사인) 사용하기
+- proxy 컨테이너가 시작 시 self-signed 인증서를 생성해 80→443 리다이렉트, TLS 종료를 수행합니다.
+- 기본 CN/SAN은 `localhost`/`127.0.0.1`이므로 IP/도메인을 SAN에 넣어 경고를 최소화하세요(브라우저 경고는 남음).
+```bash
+export SSL_CN=nearme.local             # CN
+export SSL_SAN="DNS:nearme.local,IP:<서버_IP>,DNS:localhost,IP:127.0.0.1"
+docker compose down
+docker compose up -d --build proxy
+```
+- 브라우저에서 “안전하지 않음/고급” 경고를 통과해야 합니다. 실서비스는 공인 인증서(로드밸런서/Let’s Encrypt)를 권장합니다.
 
 ## 6) 상태 확인
 ```bash

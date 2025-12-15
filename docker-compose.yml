@@ -45,8 +45,23 @@ services:
     container_name: nearmie-frontend
     depends_on:
       - backend
+    expose:
+      - "80"
+
+  proxy:
+    build: ./proxy
+    container_name: nearmie-proxy
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      - SSL_CN=${SSL_CN:-localhost}
+      - SSL_SAN=${SSL_SAN:-DNS:localhost,IP:127.0.0.1}
+      - SSL_DAYS=${SSL_DAYS:-3650}
     ports:
       - "80:80"
+      - "443:443"
+    restart: unless-stopped
 
 volumes:
   esdata:
