@@ -64,6 +64,41 @@ const DEFAULT_BBOXES: BBox[] = LAT_BANDS.flatMap((lat) =>
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const NAMED_BBOXES: Record<string, BBox[]> = {
+  seoul: [{ south: 37.3, west: 126.7, north: 37.75, east: 127.2 }],
+  busan: [{ south: 35.0, west: 128.8, north: 35.4, east: 129.3 }],
+  daegu: [{ south: 35.7, west: 128.3, north: 35.95, east: 128.75 }],
+  daejeon: [{ south: 36.22, west: 127.25, north: 36.45, east: 127.55 }],
+  gwangju: [{ south: 35.05, west: 126.75, north: 35.25, east: 127.05 }],
+  jeju: [{ south: 33.2, west: 126.2, north: 33.6, east: 126.8 }],
+};
+
+function parseCustomBboxes(): BBox[] {
+  const raw = process.env.OVERPASS_BBOXES;
+  if (!raw) return [];
+  return raw
+    .split(';')
+    .map((chunk) => chunk.split(',').map((v) => Number(v.trim())))
+    .filter((parts) => parts.length === 4 && parts.every((n) => Number.isFinite(n)))
+    .map(([south, west, north, east]) => ({ south, west, north, east }));
+}
+
+function resolveBboxes(): BBox[] {
+  const custom = parseCustomBboxes();
+  if (custom.length) {
+    console.log(`Using custom bboxes from OVERPASS_BBOXES (${custom.length})`);
+    return custom;
+  }
+
+  const region = (process.env.OVERPASS_REGION || '').toLowerCase();
+  if (region && NAMED_BBOXES[region]) {
+    console.log(`Using preset region "${region}" (${NAMED_BBOXES[region].length} bbox(es))`);
+    return NAMED_BBOXES[region];
+  }
+
+  return DEFAULT_BBOXES;
+}
+
 function buildOverpassQuery(bbox: BBox) {
   const { south, west, north, east } = bbox;
   const regexAmenity = AMENITY_FILTERS.join('|');
@@ -228,8 +263,9 @@ function dedupeKey(place: PlaceDocument) {
 
 async function collectPlaces(): Promise<PlaceDocument[]> {
   const store = new Map<string, PlaceDocument>();
+  const targetBboxes = resolveBboxes();
 
-  for (const bbox of DEFAULT_BBOXES) {
+  for (const bbox of targetBboxes) {
     console.log(
       `Fetching bbox south=${bbox.south} west=${bbox.west} north=${bbox.north} east=${bbox.east}`
     );
