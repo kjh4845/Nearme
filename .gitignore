@@ -1,0 +1,23 @@
+# OS junk
+.DS_Store
+
+# Node dependencies
+node_modules/
+
+# Build outputs
+dist/
+frontend/dist/
+backend/dist/
+
+# Environment files
+.env
+.env.*
+backend/.env
+frontend/.env
+!**/.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

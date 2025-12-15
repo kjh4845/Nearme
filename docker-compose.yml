@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.2
+    container_name: nearmie-es
+    environment:
+      - discovery.type=single-node
+      - cluster.name=nearme
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  backend:
+    build: ./backend
+    container_name: nearmie-backend
+    environment:
+      - ES_NODE_URL=http://elasticsearch:9200
+      - PORT=4000
+      - JWT_SECRET=sUdQZG4YJU2AbXgy3hafHZoCMvytXVMZqEMYwqeb8HeM
+      - TOKEN_EXPIRES_IN=7d
+      - BCRYPT_SALT_ROUNDS=10
+    depends_on:
+      - elasticsearch
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+        VITE_KAKAO_MAP_KEY: ${VITE_KAKAO_MAP_KEY:-2ca78ddc8e074e6c9e61884a602f4839}
+    container_name: nearmie-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  esdata:
