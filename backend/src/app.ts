@@ -1,11 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import { config } from './lib/env';
-import { ensurePlacesIndex } from './lib/elasticsearch';
+import { ensurePlacesIndex, waitForElasticsearch } from './lib/elasticsearch';
 import authRoutes from './routes/auth';
 import placeRoutes from './routes/places';
 
 async function bootstrap() {
+  await waitForElasticsearch();
   await ensurePlacesIndex();
 
   const app = express();

@@ -13,6 +13,12 @@ services:
       - "9200:9200"
     volumes:
       - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 10s
 
   backend:
     build: ./backend
@@ -24,9 +30,11 @@ services:
       - TOKEN_EXPIRES_IN=7d
       - BCRYPT_SALT_ROUNDS=10
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     ports:
       - "4000:4000"
+    restart: unless-stopped
 
   frontend:
     build:
