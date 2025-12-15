@@ -66,10 +66,19 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const NAMED_BBOXES: Record<string, BBox[]> = {
   seoul: [{ south: 37.3, west: 126.7, north: 37.75, east: 127.2 }],
+  incheon: [{ south: 37.3, west: 126.4, north: 37.6, east: 126.8 }],
+  suwon: [{ south: 37.2, west: 126.9, north: 37.35, east: 127.1 }],
+  seongnam: [{ south: 37.35, west: 127.0, north: 37.5, east: 127.2 }],
   busan: [{ south: 35.0, west: 128.8, north: 35.4, east: 129.3 }],
+  ulsan: [{ south: 35.4, west: 129.1, north: 35.7, east: 129.5 }],
+  changwon: [{ south: 35.1, west: 128.5, north: 35.35, east: 128.8 }],
   daegu: [{ south: 35.7, west: 128.3, north: 35.95, east: 128.75 }],
   daejeon: [{ south: 36.22, west: 127.25, north: 36.45, east: 127.55 }],
   gwangju: [{ south: 35.05, west: 126.75, north: 35.25, east: 127.05 }],
+  jeonju: [{ south: 35.78, west: 127.06, north: 35.92, east: 127.2 }],
+  gyeongju: [{ south: 35.7, west: 129.0, north: 36.0, east: 129.4 }],
+  cheonan: [{ south: 36.7, west: 127.1, north: 36.9, east: 127.3 }],
+  asan: [{ south: 36.7, west: 126.9, north: 36.95, east: 127.15 }],
   jeju: [{ south: 33.2, west: 126.2, north: 33.6, east: 126.8 }],
 };
 
