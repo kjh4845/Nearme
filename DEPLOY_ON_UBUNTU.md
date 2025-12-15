@@ -49,7 +49,7 @@ EOF
 ```bash
 docker compose up -d --build
 ```
-- 프론트엔드: `http://<서버_IP>:3000`
+- 프론트엔드: `http://<서버_IP>` (포트 80으로 노출)
 - 백엔드 API: `http://<서버_IP>:4000/api`
 - Elasticsearch: `http://<서버_IP>:9200`
 
